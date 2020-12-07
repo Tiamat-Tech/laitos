@@ -3,14 +3,16 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
-	"path/filepath"
 	"strconv"
-	"strings"
 
 	"github.com/HouzuoGuo/laitos/lalog"
 	"github.com/HouzuoGuo/laitos/toolbox"
 )
 
+/*
+ProcessExplorer is an HTTP handler that responds with process IDs that are running on the system, and when given a PID as query
+parameter, the handler inspects the process for its current status and activities for the response.
+*/
 type ProcessExplorer struct {
 	logger                     lalog.Logger
 	stripURLPrefixFromResponse string
@@ -36,22 +38,7 @@ func (procexp *ProcessExplorer) Handle(w http.ResponseWriter, r *http.Request) {
 	pid, _ := strconv.Atoi(pidStr)
 	if pid < 1 && pidStr != "self" {
 		// Respond with a JSON array of PIDs available for choosing
-		pidsUnderProcfs, err := filepath.Glob("/proc/[1-9]*")
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if true {
-		}
-		pids := make([]int, 0)
-		for _, pidPath := range pidsUnderProcfs {
-			id, _ := strconv.Atoi(strings.TrimPrefix(pidPath, "/proc/"))
-			if id > 0 {
-				pids = append(pids, id)
-			}
-		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(pids)
 	}
-	// Remove the prefix /proc/ from each of the return value
 }
