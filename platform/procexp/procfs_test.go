@@ -1,9 +1,12 @@
 package procexp
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 func TestGetProcStatus(t *testing.T) {
-	procStatus := `Name:   laitos.linux
+	statusTxt := `Name:   laitos.linux
 Umask:  0022
 State:  S (sleeping)
 Tgid:   1036
@@ -11,8 +14,8 @@ Ngid:   0
 Pid:    1036
 PPid:   1030
 TracerPid:      0
-Uid:    0       0       0       0
-Gid:    0       0       0       0
+Uid:    1       2       3       4
+Gid:    5       6       7       8
 FDSize: 128
 Groups:
 NStgid: 1036
@@ -58,6 +61,39 @@ Mems_allowed:   00000000,00000000,00000000,00000000,00000000,00000000,00000000,0
 Mems_allowed_list:      0
 voluntary_ctxt_switches:        1432879
 nonvoluntary_ctxt_switches:     739742`
-	procStat := `1036 (laitos.linux) S 1030 324 324 0 -1 1077936384 18171 29162419 13 491 68264 54000 82510 11761 20 0 16 0 2749 741847040 20403 18446744073709551615 4194304 12687727 140724042029504 0 0 0 0 0 2143420159 0 0 0 17 1 0 0 585 0 0 20758528 21091232 46993408 140724042030258 140724042030498 140724042030498 140724042031075 0`
-	procSchedstat := `107299274581 51731777094 2172621`
+	statTxt := `1036 (laitos.linux) S 1030 324 324 0 -1 1077936384 18171 29162419 13 491 68264 54000 82510 11761 20 0 16 0 2749 741847040 20403 18446744073709551615 4194304 12687727 140724042029504 0 0 0 0 0 2143420159 0 0 0 17 1 0 0 585 0 0 20758528 21091232 46993408 140724042030258 140724042030498 140724042030498 140724042031075 0`
+	schedstatTxt := `107299274581 51731777094 2172621`
+	status := getProcStatus(statusTxt, schedstatTxt, statTxt)
+	statusMatch := ProcessStatus{
+		Name:                "laitos.linux",
+		Umask:               "0022",
+		ThreadGroupID:       1036,
+		ProcessID:           1036,
+		ParentPID:           1030,
+		ProcessGroupID:      324,
+		StartedAtUptimeTick: 2749,
+		ProcessPrivilege: ProcessPrivilege{
+			RealUID:      1,
+			EffectiveUID: 2,
+			RealGID:      5,
+			EffectiveGID: 6,
+		},
+		ProcessMemUsage: ProcessMemUsage{
+			VirtualMemSizeBytes:     741847040,
+			ResidentSetMemSizePages: 20403,
+		},
+		ProcessCPUUsage: ProcessCPUUsage{
+			NumUserModeTicksInclChildren: 68264 + 82510,
+			NumSysModeTicksInclChildren:  54000 + 11761,
+		},
+		ProcessSchedulerStats: ProcessSchedulerStats{
+			NumVoluntaryCtxSwitches:    1432879,
+			NumNonVoluntaryCtxSwitches: 739742,
+			NumRunTicks:                107299274581,
+			NumWaitTicks:               51731777094,
+		},
+	}
+	if !reflect.DeepEqual(status, statusMatch) {
+		t.Fatalf("\n%+v\n%+v\n", status, statusMatch)
+	}
 }

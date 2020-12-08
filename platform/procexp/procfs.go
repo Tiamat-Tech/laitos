@@ -1,9 +1,15 @@
 package procexp
 
 import (
+	"encoding/binary"
+	"io/ioutil"
 	"regexp"
 	"strconv"
 	"strings"
+)
+
+const (
+	SizeOfUint uint = 32 << (^uint(0) >> 63)
 )
 
 var (
@@ -40,8 +46,8 @@ type ProcessPrivilege struct {
 
 type ProcessMemUsage struct {
 	// stat
-	VirtualMemSize     int
-	ResidentSetMemSize int
+	VirtualMemSizeBytes     int
+	ResidentSetMemSizePages int
 }
 
 type ProcessCPUUsage struct {
@@ -83,6 +89,33 @@ func getDACIDsFromProcfs(in string) []int {
 	}
 }
 
+// getClockTicksPerSecond returns the number of times kernel timer interrupts every second.
+func getClockTicksPerSecond() int {
+	// The function body is heavily inspired by github.com/tklauser/go-sysconf
+	auxv, err := ioutil.ReadFile("/proc/self/auxv")
+	if err == nil {
+		bufPos := int(SizeOfUint / 8)
+		for i := 0; i < len(auxv)-bufPos*2; i += bufPos * 2 {
+			var tag, value uint
+			switch SizeOfUint {
+			case 32:
+				tag = uint(binary.LittleEndian.Uint32(auxv[i:]))
+				value = uint(binary.LittleEndian.Uint32(auxv[i+bufPos:]))
+			case 64:
+				tag = uint(binary.LittleEndian.Uint64(auxv[i:]))
+				value = uint(binary.LittleEndian.Uint64(auxv[i+bufPos:]))
+			}
+			switch tag {
+			// See asm/auxvec.h for the definition of constant AT_CLKTCK ("frequency at which times() increments"), which is an integer 17.
+			case 17:
+				return int(value)
+			}
+		}
+	}
+	// Apparently 100 HZ is a very common value of _SC_CLK_TCK, it seems to be this way with Linux kernel 5.4.0 on x86-64.
+	return 100
+}
+
 func getProcStatus(statusContent, schedstatContent, statContent string) ProcessStatus {
 	// Collect key-value pairs from /proc/XXXX/status
 	statusKeyValue := make(map[string]string)
@@ -115,12 +148,12 @@ func getProcStatus(statusContent, schedstatContent, statContent string) ProcessS
 			EffectiveGID: gids[1],
 		},
 		ProcessMemUsage: ProcessMemUsage{
-			VirtualMemSize:     atoiOr0(strSliceElemOrEmpty(statFields, 23)),
-			ResidentSetMemSize: atoiOr0(strSliceElemOrEmpty(statFields, 24)),
+			VirtualMemSizeBytes:     atoiOr0(strSliceElemOrEmpty(statFields, 23)),
+			ResidentSetMemSizePages: atoiOr0(strSliceElemOrEmpty(statFields, 24)),
 		},
 		ProcessCPUUsage: ProcessCPUUsage{
 			NumUserModeTicksInclChildren: atoiOr0(strSliceElemOrEmpty(statFields, 14)) + atoiOr0(strSliceElemOrEmpty(statFields, 16)),
-			NumSysModeTicksInclChildren:  atoiOr0(strSliceElemOrEmpty(statFields, 17)) + atoiOr0(strSliceElemOrEmpty(statFields, 17)),
+			NumSysModeTicksInclChildren:  atoiOr0(strSliceElemOrEmpty(statFields, 15)) + atoiOr0(strSliceElemOrEmpty(statFields, 17)),
 		},
 		ProcessSchedulerStats: ProcessSchedulerStats{
 			NumVoluntaryCtxSwitches:    atoiOr0(statusKeyValue["voluntary_ctxt_switches"]),
