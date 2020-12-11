@@ -104,6 +104,7 @@ func getClockTicksPerSecond() int {
 		auxv, err := ioutil.ReadFile("/proc/self/auxv")
 		if err == nil {
 			bufPos := int(SizeOfUint / 8)
+		loop:
 			for i := 0; i < len(auxv)-bufPos*2; i += bufPos * 2 {
 				var tag, value uint
 				switch SizeOfUint {
@@ -117,16 +118,15 @@ func getClockTicksPerSecond() int {
 				switch tag {
 				// See asm/auxvec.h for the definition of constant AT_CLKTCK ("frequency at which times() increments"), which is an integer 17.
 				case 17:
-
-					break
-					return int(value)
+					sysconfClockTick = int(value)
+					break loop
 				}
 			}
 		}
 		// Apparently 100 HZ is a very common value of _SC_CLK_TCK, it seems to be this way with Linux kernel 5.4.0 on x86-64.
-		return 100
-
+		sysconfClockTick = 100
 	})
+	return sysconfClockTick
 }
 
 func getProcStatus(statusContent, schedstatContent, statContent string) ProcessStatus {
@@ -165,8 +165,8 @@ func getProcStatus(statusContent, schedstatContent, statContent string) ProcessS
 			ResidentSetMemSizeBytes: atoiOr0(strSliceElemOrEmpty(statFields, 24)) * os.Getpagesize(),
 		},
 		ProcessCPUUsage: ProcessCPUUsage{
-			NumUserModeSecInclChildren: atoiOr0(strSliceElemOrEmpty(statFields, 14)) + atoiOr0(strSliceElemOrEmpty(statFields, 16))/getClockTicksPerSecond(),
-			NumSysModeSecInclChildren:  atoiOr0(strSliceElemOrEmpty(statFields, 15)) + atoiOr0(strSliceElemOrEmpty(statFields, 17))/getClockTicksPerSecond(),
+			NumUserModeSecInclChildren: (atoiOr0(strSliceElemOrEmpty(statFields, 14)) + atoiOr0(strSliceElemOrEmpty(statFields, 16))) / getClockTicksPerSecond(),
+			NumSysModeSecInclChildren:  (atoiOr0(strSliceElemOrEmpty(statFields, 15)) + atoiOr0(strSliceElemOrEmpty(statFields, 17))) / getClockTicksPerSecond(),
 		},
 		ProcessSchedulerStats: ProcessSchedulerStats{
 			NumVoluntaryCtxSwitches:    atoiOr0(statusKeyValue["voluntary_ctxt_switches"]),

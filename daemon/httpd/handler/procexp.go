@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"net/http"
 	"strconv"
 
@@ -39,6 +38,5 @@ func (procexp *ProcessExplorer) Handle(w http.ResponseWriter, r *http.Request) {
 	if pid < 1 && pidStr != "self" {
 		// Respond with a JSON array of PIDs available for choosing
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(pids)
 	}
 }

@@ -1,6 +1,7 @@
 package procexp
 
 import (
+	"os"
 	"reflect"
 	"testing"
 )
@@ -65,13 +66,13 @@ nonvoluntary_ctxt_switches:     739742`
 	schedstatTxt := `107299274581 51731777094 2172621`
 	status := getProcStatus(statusTxt, schedstatTxt, statTxt)
 	statusMatch := ProcessStatus{
-		Name:                "laitos.linux",
-		Umask:               "0022",
-		ThreadGroupID:       1036,
-		ProcessID:           1036,
-		ParentPID:           1030,
-		ProcessGroupID:      324,
-		StartedAtUptimeTick: 2749,
+		Name:               "laitos.linux",
+		Umask:              "0022",
+		ThreadGroupID:      1036,
+		ProcessID:          1036,
+		ParentPID:          1030,
+		ProcessGroupID:     324,
+		StartedAtUptimeSec: 2749 / getClockTicksPerSecond(),
 		ProcessPrivilege: ProcessPrivilege{
 			RealUID:      1,
 			EffectiveUID: 2,
@@ -80,17 +81,17 @@ nonvoluntary_ctxt_switches:     739742`
 		},
 		ProcessMemUsage: ProcessMemUsage{
 			VirtualMemSizeBytes:     741847040,
-			ResidentSetMemSizePages: 20403,
+			ResidentSetMemSizeBytes: 20403 * os.Getpagesize(),
 		},
 		ProcessCPUUsage: ProcessCPUUsage{
-			NumUserModeTicksInclChildren: 68264 + 82510,
-			NumSysModeTicksInclChildren:  54000 + 11761,
+			NumUserModeSecInclChildren: (68264 + 82510) / getClockTicksPerSecond(),
+			NumSysModeSecInclChildren:  (54000 + 11761) / getClockTicksPerSecond(),
 		},
 		ProcessSchedulerStats: ProcessSchedulerStats{
 			NumVoluntaryCtxSwitches:    1432879,
 			NumNonVoluntaryCtxSwitches: 739742,
-			NumRunTicks:                107299274581,
-			NumWaitTicks:               51731777094,
+			NumRunSec:                  107299274581 / getClockTicksPerSecond(),
+			NumWaitSec:                 51731777094 / getClockTicksPerSecond(),
 		},
 	}
 	if !reflect.DeepEqual(status, statusMatch) {
