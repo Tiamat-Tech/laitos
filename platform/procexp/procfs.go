@@ -16,11 +16,11 @@ const (
 )
 
 var (
-	regexStatusKeyValue  = regexp.MustCompile(`^(\w+)\s*:\s*(.*)$`)
-	regexSchedstatFields = regexp.MustCompile(`^(\d+)\s+(\d+)\s+(\d+).*$`)
+	regexStatusKeyValue  = regexp.MustCompile(`^\s*(\w+)\s*:\s*(.*)`)
+	regexSchedstatFields = regexp.MustCompile(`^\s*(\d+)\s+(\d+)\s+(\d+).*`)
 	// PID, executable base name (up to 16 characters long), state, and 35 more fields.
 	// See https://man7.org/linux/man-pages/man5/procfs.5.html for the complete list of fields.
-	regexStatFields = regexp.MustCompile(`^(\d+)\s+\((.*)\)\s+(\S+)\s+` + strings.Repeat(`(\S+)\s+`, 35) + `.*$`)
+	regexStatFields = regexp.MustCompile(`^\s*(\d+)\s+\((.*)\)\s+(\S+)\s+` + strings.Repeat(`(\S+)\s+`, 35) + `.*`)
 
 	// sysconfClockTick is the cached value of the number of times kernel timer interrupts each second,
 	// the value is going to be calculated by function getClockTicksPerSecondOnce.
@@ -28,9 +28,9 @@ var (
 	getClockTicksPerSecondOnce     = new(sync.Once)
 )
 
+// ProcessStatus describes the general status and resource usage information about a process.
 type ProcessStatus struct {
-	// General
-	Name                  string // status
+	Name                  string
 	Umask                 string
 	State                 string
 	ThreadGroupID         int
@@ -44,6 +44,7 @@ type ProcessStatus struct {
 	ProcessSchedulerStats ProcessSchedulerStats
 }
 
+// ProcessPrivilege describes the the UID and GID under which a process runs.
 type ProcessPrivilege struct {
 	// status
 	RealUID      int
@@ -52,25 +53,24 @@ type ProcessPrivilege struct {
 	EffectiveGID int
 }
 
+// ProcessMemUsage describes the memory usage of a process.
 type ProcessMemUsage struct {
-	// stat
 	VirtualMemSizeBytes     int
 	ResidentSetMemSizeBytes int
 }
 
+// ProcessCPUUsage describes the accumulated CPU usage of a process.
 type ProcessCPUUsage struct {
-	// stat
 	NumUserModeSecInclChildren int
 	NumSysModeSecInclChildren  int
 }
 
+// ProcessSchedulerStats describes the scheduler's statistics about a process.
 type ProcessSchedulerStats struct {
-	// status
 	NumVoluntaryCtxSwitches    int
 	NumNonVoluntaryCtxSwitches int
-	// schedstat
-	NumRunSec  int
-	NumWaitSec int
+	NumRunSec                  int
+	NumWaitSec                 int
 }
 
 // atoiOr0 returns the integer converted from the input string, or 0 if the input string does not represent a valid integer.
@@ -142,12 +142,12 @@ func getProcStatus(statusContent, schedstatContent, statContent string) ProcessS
 	schedstatFields := regexSchedstatFields.FindStringSubmatch(schedstatContent)
 	// Collect fields of various data types from /proc/XXXX/stat
 	statFields := regexStatFields.FindStringSubmatch(statContent)
-
 	// Put the information together
 	uids := getDACIDsFromProcfs(statusKeyValue["Uid"])
 	gids := getDACIDsFromProcfs(statusKeyValue["Gid"])
 	return ProcessStatus{
 		Name:               statusKeyValue["Name"],
+		State:              strSliceElemOrEmpty(statFields, 3),
 		Umask:              statusKeyValue["Umask"],
 		ThreadGroupID:      atoiOr0(statusKeyValue["Tgid"]),
 		ProcessID:          atoiOr0(statusKeyValue["Pid"]),
@@ -171,8 +171,11 @@ func getProcStatus(statusContent, schedstatContent, statContent string) ProcessS
 		ProcessSchedulerStats: ProcessSchedulerStats{
 			NumVoluntaryCtxSwitches:    atoiOr0(statusKeyValue["voluntary_ctxt_switches"]),
 			NumNonVoluntaryCtxSwitches: atoiOr0(statusKeyValue["nonvoluntary_ctxt_switches"]),
-			NumRunSec:                  atoiOr0(strSliceElemOrEmpty(schedstatFields, 1)) / getClockTicksPerSecond(),
-			NumWaitSec:                 atoiOr0(strSliceElemOrEmpty(schedstatFields, 2)) / getClockTicksPerSecond(),
+			// According to https://lkml.org/lkml/2019/7/24/906, the first field of "schedstat" means
+			// "sum of all time spent running by tasks on this processor (in nanoseconds, or jiffies prior to 2.6.23)"
+			// and the second field means "sum of all time spent waiting to run by tasks on this processor (in nanoseconds, or jiffies prior to 2.6.23)".
+			NumRunSec:  atoiOr0(strSliceElemOrEmpty(schedstatFields, 1)) / 1000000000,
+			NumWaitSec: atoiOr0(strSliceElemOrEmpty(schedstatFields, 2)) / 1000000000,
 		},
 	}
 }

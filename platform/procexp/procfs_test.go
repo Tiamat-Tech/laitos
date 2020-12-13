@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestGetProcStatus(t *testing.T) {
+func TestParsingProcStatus(t *testing.T) {
 	statusTxt := `Name:   laitos.linux
 Umask:  0022
 State:  S (sleeping)
@@ -67,6 +67,7 @@ nonvoluntary_ctxt_switches:     739742`
 	status := getProcStatus(statusTxt, schedstatTxt, statTxt)
 	statusMatch := ProcessStatus{
 		Name:               "laitos.linux",
+		State:              "S",
 		Umask:              "0022",
 		ThreadGroupID:      1036,
 		ProcessID:          1036,
@@ -90,8 +91,8 @@ nonvoluntary_ctxt_switches:     739742`
 		ProcessSchedulerStats: ProcessSchedulerStats{
 			NumVoluntaryCtxSwitches:    1432879,
 			NumNonVoluntaryCtxSwitches: 739742,
-			NumRunSec:                  107299274581 / getClockTicksPerSecond(),
-			NumWaitSec:                 51731777094 / getClockTicksPerSecond(),
+			NumRunSec:                  107299274581 / 1000000000,
+			NumWaitSec:                 51731777094 / 1000000000,
 		},
 	}
 	if !reflect.DeepEqual(status, statusMatch) {
