@@ -44,6 +44,7 @@ func TestGetProcStatusByPID(t *testing.T) {
 	}
 	defer func() {
 		_ = cmd.Process.Kill()
+		_, _ = cmd.Process.Wait()
 	}()
 	// It takes couple of seconds for the process to use up some CPU time
 	time.Sleep(8 * time.Second)

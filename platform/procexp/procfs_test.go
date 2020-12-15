@@ -85,14 +85,14 @@ nonvoluntary_ctxt_switches:     739742`
 			ResidentSetMemSizeBytes: 20403 * os.Getpagesize(),
 		},
 		ProcessCPUUsage: ProcessCPUUsage{
-			NumUserModeSecInclChildren: (68264 + 82510) / getClockTicksPerSecond(),
-			NumSysModeSecInclChildren:  (54000 + 11761) / getClockTicksPerSecond(),
+			NumUserModeSecInclChildren: float64(68264+82510) / float64(getClockTicksPerSecond()),
+			NumSysModeSecInclChildren:  float64(54000+11761) / float64(getClockTicksPerSecond()),
 		},
 		ProcessSchedulerStats: ProcessSchedulerStats{
 			NumVoluntaryCtxSwitches:    1432879,
 			NumNonVoluntaryCtxSwitches: 739742,
-			NumRunSec:                  107299274581 / 1000000000,
-			NumWaitSec:                 51731777094 / 1000000000,
+			NumRunSec:                  float64(107299274581) / 1000000000,
+			NumWaitSec:                 float64(51731777094) / 1000000000,
 		},
 	}
 	if !reflect.DeepEqual(status, statusMatch) {

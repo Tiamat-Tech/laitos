@@ -1,10 +1,13 @@
 package handler
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/HouzuoGuo/laitos/lalog"
+	"github.com/HouzuoGuo/laitos/platform/procexp"
 	"github.com/HouzuoGuo/laitos/toolbox"
 )
 
@@ -17,9 +20,9 @@ type ProcessExplorer struct {
 	stripURLPrefixFromResponse string
 }
 
-func (procexp *ProcessExplorer) Initialise(logger lalog.Logger, _ *toolbox.CommandProcessor, stripURLPrefixFromResponse string) error {
-	procexp.logger = logger
-	procexp.stripURLPrefixFromResponse = stripURLPrefixFromResponse
+func (explorer *ProcessExplorer) Initialise(logger lalog.Logger, _ *toolbox.CommandProcessor, stripURLPrefixFromResponse string) error {
+	explorer.logger = logger
+	explorer.stripURLPrefixFromResponse = stripURLPrefixFromResponse
 	return nil
 }
 
@@ -27,16 +30,28 @@ func (_ *ProcessExplorer) GetRateLimitFactor() int {
 	return 1
 }
 
-func (procexp *ProcessExplorer) SelfTest() error {
+func (explorer *ProcessExplorer) SelfTest() error {
 	return nil
 }
 
-func (procexp *ProcessExplorer) Handle(w http.ResponseWriter, r *http.Request) {
+func (explorer *ProcessExplorer) Handle(w http.ResponseWriter, r *http.Request) {
 	NoCache(w)
 	pidStr := r.FormValue("pid")
-	pid, _ := strconv.Atoi(pidStr)
-	if pid < 1 && pidStr != "self" {
+	respEncoder := json.NewEncoder(w)
+	respEncoder.SetIndent("", "  ")
+	if pidStr == "" {
 		// Respond with a JSON array of PIDs available for choosing
 		w.Header().Set("Content-Type", "application/json")
+		_ = respEncoder.Encode(procexp.GetProcIDs())
+	} else {
+		// Respond with the latest process status
+		pid, _ := strconv.Atoi(pidStr)
+		// By contract, the function will retrieve the own process' status if the input PID is 0.
+		status, err := procexp.GetProcStatus(pid)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("failed to read process status - %v", err), http.StatusInternalServerError)
+			return
+		}
+		_ = respEncoder.Encode(status)
 	}
 }

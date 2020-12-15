@@ -61,16 +61,16 @@ type ProcessMemUsage struct {
 
 // ProcessCPUUsage describes the accumulated CPU usage of a process.
 type ProcessCPUUsage struct {
-	NumUserModeSecInclChildren int
-	NumSysModeSecInclChildren  int
+	NumUserModeSecInclChildren float64
+	NumSysModeSecInclChildren  float64
 }
 
 // ProcessSchedulerStats describes the scheduler's statistics about a process.
 type ProcessSchedulerStats struct {
 	NumVoluntaryCtxSwitches    int
 	NumNonVoluntaryCtxSwitches int
-	NumRunSec                  int
-	NumWaitSec                 int
+	NumRunSec                  float64
+	NumWaitSec                 float64
 }
 
 // atoiOr0 returns the integer converted from the input string, or 0 if the input string does not represent a valid integer.
@@ -165,8 +165,8 @@ func getProcStatus(statusContent, schedstatContent, statContent string) ProcessS
 			ResidentSetMemSizeBytes: atoiOr0(strSliceElemOrEmpty(statFields, 24)) * os.Getpagesize(),
 		},
 		ProcessCPUUsage: ProcessCPUUsage{
-			NumUserModeSecInclChildren: (atoiOr0(strSliceElemOrEmpty(statFields, 14)) + atoiOr0(strSliceElemOrEmpty(statFields, 16))) / getClockTicksPerSecond(),
-			NumSysModeSecInclChildren:  (atoiOr0(strSliceElemOrEmpty(statFields, 15)) + atoiOr0(strSliceElemOrEmpty(statFields, 17))) / getClockTicksPerSecond(),
+			NumUserModeSecInclChildren: float64(atoiOr0(strSliceElemOrEmpty(statFields, 14))+atoiOr0(strSliceElemOrEmpty(statFields, 16))) / float64(getClockTicksPerSecond()),
+			NumSysModeSecInclChildren:  float64(atoiOr0(strSliceElemOrEmpty(statFields, 15))+atoiOr0(strSliceElemOrEmpty(statFields, 17))) / float64(getClockTicksPerSecond()),
 		},
 		ProcessSchedulerStats: ProcessSchedulerStats{
 			NumVoluntaryCtxSwitches:    atoiOr0(statusKeyValue["voluntary_ctxt_switches"]),
@@ -174,8 +174,8 @@ func getProcStatus(statusContent, schedstatContent, statContent string) ProcessS
 			// According to https://lkml.org/lkml/2019/7/24/906, the first field of "schedstat" means
 			// "sum of all time spent running by tasks on this processor (in nanoseconds, or jiffies prior to 2.6.23)"
 			// and the second field means "sum of all time spent waiting to run by tasks on this processor (in nanoseconds, or jiffies prior to 2.6.23)".
-			NumRunSec:  atoiOr0(strSliceElemOrEmpty(schedstatFields, 1)) / 1000000000,
-			NumWaitSec: atoiOr0(strSliceElemOrEmpty(schedstatFields, 2)) / 1000000000,
+			NumRunSec:  float64(atoiOr0(strSliceElemOrEmpty(schedstatFields, 1))) / 1000000000,
+			NumWaitSec: float64(atoiOr0(strSliceElemOrEmpty(schedstatFields, 2))) / 1000000000,
 		},
 	}
 }
