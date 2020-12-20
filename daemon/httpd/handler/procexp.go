@@ -12,29 +12,29 @@ import (
 )
 
 /*
-ProcessExplorer is an HTTP handler that responds with process IDs that are running on the system, and when given a PID as query
+HandleProcessExplorer is an HTTP handler that responds with process IDs that are running on the system, and when given a PID as query
 parameter, the handler inspects the process for its current status and activities for the response.
 */
-type ProcessExplorer struct {
+type HandleProcessExplorer struct {
 	logger                     lalog.Logger
 	stripURLPrefixFromResponse string
 }
 
-func (explorer *ProcessExplorer) Initialise(logger lalog.Logger, _ *toolbox.CommandProcessor, stripURLPrefixFromResponse string) error {
+func (explorer *HandleProcessExplorer) Initialise(logger lalog.Logger, _ *toolbox.CommandProcessor, stripURLPrefixFromResponse string) error {
 	explorer.logger = logger
 	explorer.stripURLPrefixFromResponse = stripURLPrefixFromResponse
 	return nil
 }
 
-func (_ *ProcessExplorer) GetRateLimitFactor() int {
+func (_ *HandleProcessExplorer) GetRateLimitFactor() int {
 	return 1
 }
 
-func (explorer *ProcessExplorer) SelfTest() error {
+func (explorer *HandleProcessExplorer) SelfTest() error {
 	return nil
 }
 
-func (explorer *ProcessExplorer) Handle(w http.ResponseWriter, r *http.Request) {
+func (explorer *HandleProcessExplorer) Handle(w http.ResponseWriter, r *http.Request) {
 	NoCache(w)
 	pidStr := r.FormValue("pid")
 	respEncoder := json.NewEncoder(w)
